@@ -1,82 +1,278 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
-import FinanceInput from './components/FinanceInput';
 import SummaryCards from './components/SummaryCards';
 import HealthScore from './components/HealthScore';
+import FinanceInput from './components/FinanceInput';
+import TransactionHistory from './components/TransactionHistory';
+import BudgetAndSavings from './components/BudgetAndSavings';
 import SpendingChart from './components/SpendingChart';
 import AIInsights from './components/AIInsights';
 import WhatIfSimulator from './components/WhatIfSimulator';
 import FinanceChat from './components/FinanceChat';
+import AuthPage from './components/AuthPage';
+import MonthlyExpenseAnalysis from './components/MonthlyExpenseAnalysis';
+import RecurringExpenses from './components/RecurringExpenses';
 
 import {
-  calculateSummary,
-  calculateHealthScore,
-  generateAIInsights,
-} from './utils/financialCalculators';
+  apiGetIncome, apiSetIncome,
+  apiGetExpenses, apiAddExpense, apiUpdateExpense, apiDeleteExpense,
+  apiGetBudget, apiSetBudget,
+  apiGetSavingsGoal, apiSetSavingsGoal,
+  apiGetFinancialHealth, apiResetDemo
+} from './services/api';
+
+import { calculateSummary, calculateHealthScore, generateAIInsights } from './utils/financialCalculators';
 
 export default function App() {
-  // Central Financial State with Hackathon Default Demo Values
-  const [income, setIncome] = useState(40000);
-  const [expenses, setExpenses] = useState({
-    rent: 10000,
-    food: 5000,
-    transport: 3000,
-    shopping: 5000,
-    entertainment: 2000,
-    bills: 3000,
-    other: 2000,
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Authentication state initialized from localStorage session
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('ai_finance_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
   });
 
-  const [analyzePulse, setAnalyzePulse] = useState(false);
-
-  // Handlers
-  const handleIncomeChange = (val) => {
-    setIncome(val === '' ? '' : Number(val));
+  const handleLogout = () => {
+    localStorage.removeItem('ai_finance_user');
+    setUser(null);
   };
 
-  const handleExpenseChange = (key, val) => {
-    setExpenses((prev) => ({
-      ...prev,
-      [key]: val === '' ? '' : Number(val),
-    }));
+  // Core Application Data State
+  const [income, setIncome] = useState(40000);
+  const [expensesList, setExpensesList] = useState([
+    // September 2026
+    { id: 'exp-1', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-09-01', is_recurring: true },
+    { id: 'exp-2', description: 'Groceries & Vegetables', amount: 5000, category: 'Food', date: '2026-09-03', is_recurring: false },
+    { id: 'exp-3', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-09-02', is_recurring: true },
+    { id: 'exp-4', description: 'Amazon Clothing & Gadgets', amount: 5000, category: 'Shopping', date: '2026-09-05', is_recurring: false },
+    { id: 'exp-5', description: 'Movie & Dining Out', amount: 2000, category: 'Entertainment', date: '2026-09-08', is_recurring: false },
+    { id: 'exp-6', description: 'Electricity & Water Bill', amount: 3000, category: 'Bills', date: '2026-09-04', is_recurring: true },
+    { id: 'exp-7', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-09-01', is_recurring: true },
+    { id: 'exp-8', description: 'Mobile Prepaid Recharge', amount: 1500, category: 'Bills', date: '2026-09-06', is_recurring: true },
+
+    // August 2026
+    { id: 'exp-9', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-08-01', is_recurring: true },
+    { id: 'exp-10', description: 'Supermarket Groceries', amount: 4500, category: 'Food', date: '2026-08-04', is_recurring: false },
+    { id: 'exp-11', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-08-02', is_recurring: true },
+    { id: 'exp-12', description: 'Electricity & Water Bill', amount: 2800, category: 'Bills', date: '2026-08-05', is_recurring: true },
+    { id: 'exp-13', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-08-01', is_recurring: true },
+
+    // July 2026
+    { id: 'exp-15', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-07-01', is_recurring: true },
+    { id: 'exp-16', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-07-02', is_recurring: true },
+    { id: 'exp-17', description: 'Electricity & Water Bill', amount: 2500, category: 'Bills', date: '2026-07-04', is_recurring: true },
+
+    // October 2026
+    { id: 'exp-19', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-10-01', is_recurring: true },
+    { id: 'exp-20', description: 'Festive Shopping & Electronics', amount: 8200, category: 'Shopping', date: '2026-10-05', is_recurring: false },
+    { id: 'exp-21', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-10-02', is_recurring: true },
+    { id: 'exp-22', description: 'Electricity & Water Bill', amount: 3200, category: 'Bills', date: '2026-10-04', is_recurring: true },
+    { id: 'exp-23', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-10-01', is_recurring: true },
+  ]);
+
+  const [budgetData, setBudgetData] = useState({
+    total_budget: 32000,
+    categories: {
+      Rent: 10000,
+      Food: 6000,
+      Transport: 3500,
+      Shopping: 4000,
+      Entertainment: 2500,
+      Bills: 4000,
+      Other: 2000,
+    },
+  });
+
+  const [savingsGoal, setSavingsGoal] = useState({
+    target_amount: 50000,
+    target_date: '2027-03-31',
+    current_savings: 15000,
+  });
+
+  // Load state from REST backend on mount
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    try {
+      const [inc, exps, bud, goal] = await Promise.all([
+        apiGetIncome(),
+        apiGetExpenses(),
+        apiGetBudget(),
+        apiGetSavingsGoal(),
+      ]);
+
+      if (inc !== null) setIncome(inc);
+      if (exps && Array.isArray(exps)) setExpensesList(exps);
+      if (bud && bud.category_details) {
+        const catMap = {};
+        bud.category_details.forEach(c => { catMap[c.category] = c.limit; });
+        setBudgetData({ total_budget: bud.total_budget, categories: catMap });
+      }
+      if (goal) setSavingsGoal(goal);
+    } catch (err) {
+      console.warn('Failed to load REST data:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAnalyze = () => {
-    setAnalyzePulse(true);
-    setTimeout(() => setAnalyzePulse(false), 600);
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  // Compute category breakdown from transactions list
+  const categoryTotals = useMemo(() => {
+    const totals = { Rent: 0, Food: 0, Transport: 0, Shopping: 0, Entertainment: 0, Bills: 0, Other: 0 };
+    expensesList.forEach((exp) => {
+      const cat = exp.category || 'Other';
+      if (totals[cat] !== undefined) {
+        totals[cat] += Number(exp.amount) || 0;
+      } else {
+        totals.Other += Number(exp.amount) || 0;
+      }
+    });
+    return totals;
+  }, [expensesList]);
+
+  // Compute total expenses
+  const totalExpenses = useMemo(() => {
+    return Object.values(categoryTotals).reduce((sum, val) => sum + val, 0);
+  }, [categoryTotals]);
+
+  // Summary Metrics
+  const summary = useMemo(() => {
+    const remainingSavings = Math.max(0, income - totalExpenses);
+    const savingsRate = income > 0 ? Math.round((remainingSavings / income) * 100) : 0;
+    return {
+      income,
+      totalExpenses,
+      remainingSavings,
+      savingsRate,
+    };
+  }, [income, totalExpenses]);
+
+  // Financial Health Score
+  const healthScore = useMemo(() => {
+    return calculateHealthScore(income, categoryTotals);
+  }, [income, categoryTotals]);
+
+  // AI Insights
+  const aiInsights = useMemo(() => {
+    return generateAIInsights(income, categoryTotals);
+  }, [income, categoryTotals]);
+
+  // Handlers for Member 1 & REST sync
+  const handleIncomeChange = async (newVal) => {
+    const num = newVal === '' ? 0 : Number(newVal);
+    setIncome(num);
+    await apiSetIncome(num);
   };
 
-  // Dynamic Calculated Metrics (Memoized for optimal performance)
-  const summary = useMemo(() => calculateSummary(income, expenses), [income, expenses]);
-  const healthScore = useMemo(() => calculateHealthScore(income, expenses), [income, expenses]);
-  const aiInsights = useMemo(() => generateAIInsights(income, expenses), [income, expenses]);
+  const handleExpenseCategoryChange = (key, val) => {
+    const catName = key.charAt(0).toUpperCase() + key.slice(1);
+    const num = val === '' ? 0 : Number(val);
+    
+    // Update or create single item for this category in expensesList
+    setExpensesList((prev) => {
+      const existingIdx = prev.findIndex((e) => e.category.toLowerCase() === key.toLowerCase());
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = { ...updated[existingIdx], amount: num };
+        return updated;
+      } else {
+        return [
+          ...prev,
+          {
+            id: `exp-${Date.now()}`,
+            description: `${catName} Expense`,
+            amount: num,
+            category: catName,
+            date: new Date().toISOString().split('T')[0],
+            is_recurring: false,
+          },
+        ];
+      }
+    });
+  };
+
+  const handleAddExpense = async (newExp) => {
+    const added = await apiAddExpense(newExp);
+    setExpensesList((prev) => [added, ...prev]);
+  };
+
+  const handleUpdateExpense = async (id, updatedData) => {
+    const updated = await apiUpdateExpense(id, updatedData);
+    setExpensesList((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
+  };
+
+  const handleDeleteExpense = async (id) => {
+    await apiDeleteExpense(id);
+    setExpensesList((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  // Handlers for Member 3 (Budget & Goal)
+  const handleSaveBudget = async (total, limits) => {
+    setBudgetData({ total_budget: total, categories: limits });
+    await apiSetBudget(total, limits);
+  };
+
+  const handleSaveSavingsGoal = async (goal) => {
+    setSavingsGoal(goal);
+    await apiSetSavingsGoal(goal);
+  };
+
+  // Handle Reset Demo Data
+  const handleResetDemoData = async () => {
+    setIsResetting(true);
+    await apiResetDemo();
+    await fetchAllData();
+    setIsResetting(false);
+  };
+
+  // Render Login/Sign-up page if user is not authenticated
+  if (!user) {
+    return <AuthPage onLoginSuccess={(userData) => setUser(userData)} />;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Header Navigation */}
-      <Header />
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white text-slate-900">
+      
+      {/* App Header & Navigation */}
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onResetDemo={handleResetDemoData}
+        isResetting={isResetting}
+        user={user}
+        onLogout={handleLogout}
+      />
 
-      {/* Main Dashboard Container */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
-        {/* Quick Welcome & Context Header */}
-        <section id="overview" className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
+        {/* Welcome Banner */}
+        <section className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
           <div className="relative z-10 max-w-3xl">
-            <span className="text-[11px] font-bold tracking-widest uppercase bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-3 py-1 rounded-full inline-block mb-3">
-              Hackathon MVP • Financial Intelligence
+            <span className="text-[10px] font-bold tracking-widest uppercase bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-3 py-1 rounded-full inline-block mb-3">
+              24-Hour Hackathon MVP • Single Integrated Platform
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Master Your Money with AI Coaching
+              AI Personal Finance Coach
             </h1>
-            <p className="mt-2 text-sm text-indigo-100/90 leading-relaxed">
-              Real-time deterministic calculation meets personalized AI guidance. Edit your monthly finances below to trigger live recalculations of your health score, spending breakdown, scenario simulator, and AI insights.
+            <p className="mt-2 text-xs sm:text-sm text-indigo-100/90 leading-relaxed">
+              Unified financial dashboard connecting Expense & Income Tracking, AI Pattern Detection, Budget & Savings Management, Visual Analytics, What-If Simulation, and AI Chatbot.
             </p>
           </div>
-          <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-10 bg-radial from-white to-transparent pointer-events-none"></div>
+          <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-10 bg-radial from-white to-transparent pointer-events-none" />
         </section>
 
-        {/* Section 2: Summary Cards */}
-        <section className={`transition-all ${analyzePulse ? 'scale-[0.99] opacity-90' : ''}`}>
+        {/* Global Summary Cards Header */}
+        <section>
           <SummaryCards
             income={summary.income}
             totalExpenses={summary.totalExpenses}
@@ -85,44 +281,105 @@ export default function App() {
           />
         </section>
 
-        {/* Section 1 & Section 3: Financial Inputs & Health Score */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <section className="lg:col-span-7">
-            <FinanceInput
-              income={income}
-              expenses={expenses}
-              onIncomeChange={handleIncomeChange}
-              onExpenseChange={handleExpenseChange}
-              onAnalyze={handleAnalyze}
-            />
-          </section>
+        {/* TAB 1: MAIN DASHBOARD */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            
+            {/* Quick Edit Finances & Health Score Ring */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <section className="lg:col-span-7">
+                <FinanceInput
+                  income={income}
+                  expenses={categoryTotals}
+                  onIncomeChange={handleIncomeChange}
+                  onExpenseChange={handleExpenseCategoryChange}
+                  onAnalyze={() => {}}
+                />
+              </section>
 
-          <section className="lg:col-span-5">
-            <HealthScore score={healthScore} />
-          </section>
-        </div>
+              <section className="lg:col-span-5">
+                <HealthScore score={healthScore} />
+              </section>
+            </div>
 
-        {/* Section 4 & Section 5: Spending Breakdown & AI Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="breakdown">
-          <section className="lg:col-span-6" id="insights">
-            <SpendingChart expenses={expenses} />
-          </section>
+            {/* Dynamic Calendar & Monthly Expense Analysis */}
+            <section>
+              <MonthlyExpenseAnalysis expensesList={expensesList} />
+            </section>
 
-          <section className="lg:col-span-6">
-            <AIInsights insights={aiInsights} />
-          </section>
-        </div>
+            {/* Recurring / Repetitive Expenses */}
+            <section>
+              <RecurringExpenses expensesList={expensesList} />
+            </section>
 
-        {/* Section 6 & Section 7: What-If Simulator & AI Coach Chat */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="simulator">
-          <section className="lg:col-span-6">
-            <WhatIfSimulator income={income} expenses={expenses} />
-          </section>
+            {/* Visualizations & AI Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <section className="lg:col-span-6">
+                <SpendingChart expenses={categoryTotals} budgetLimits={budgetData.categories} />
+              </section>
 
-          <section className="lg:col-span-6" id="chat">
-            <FinanceChat income={income} expenses={expenses} />
-          </section>
-        </div>
+              <section className="lg:col-span-6">
+                <AIInsights insights={aiInsights} />
+              </section>
+            </div>
+
+            {/* What-If Simulator & AI Chat Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <section className="lg:col-span-6">
+                <WhatIfSimulator income={income} expenses={categoryTotals} />
+              </section>
+
+              <section className="lg:col-span-6">
+                <FinanceChat income={income} expenses={categoryTotals} />
+              </section>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: TRANSACTIONS (MEMBER 1 & MEMBER 2) */}
+        {activeTab === 'transactions' && (
+          <TransactionHistory
+            income={income}
+            onIncomeChange={handleIncomeChange}
+            expensesList={expensesList}
+            onAddExpense={handleAddExpense}
+            onUpdateExpense={handleUpdateExpense}
+            onDeleteExpense={handleDeleteExpense}
+          />
+        )}
+
+        {/* TAB 3: BUDGET & SAVINGS (MEMBER 3) */}
+        {activeTab === 'budget' && (
+          <BudgetAndSavings
+            income={income}
+            totalExpenses={totalExpenses}
+            expensesByCategory={categoryTotals}
+            budget={budgetData}
+            onSaveBudget={handleSaveBudget}
+            savingsGoal={savingsGoal}
+            onSaveSavingsGoal={handleSaveSavingsGoal}
+          />
+        )}
+
+        {/* TAB 4: AI INSIGHTS */}
+        {activeTab === 'insights' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <section className="lg:col-span-7">
+              <AIInsights insights={aiInsights} />
+            </section>
+            <section className="lg:col-span-5">
+              <HealthScore score={healthScore} />
+            </section>
+          </div>
+        )}
+
+        {/* TAB 5: AI CHAT */}
+        {activeTab === 'chat' && (
+          <div className="max-w-4xl mx-auto">
+            <FinanceChat income={income} expenses={categoryTotals} />
+          </div>
+        )}
 
       </main>
 
@@ -130,13 +387,14 @@ export default function App() {
       <footer className="bg-white border-t border-slate-200 py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 space-y-1">
           <p className="font-semibold text-slate-700">
-            AI Personal Finance Coach — Hackathon MVP Frontend
+            AI Personal Finance Coach — Full-Stack Hackathon Project
           </p>
           <p>
-            Designed for 24-Hour Hackathon Presentation • React + Vite + Tailwind CSS + Recharts
+            React + Vite + Tailwind CSS + Recharts + FastAPI REST API + MongoDB Resilient Core
           </p>
         </div>
       </footer>
+
     </div>
   );
 }

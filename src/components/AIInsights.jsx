@@ -1,71 +1,84 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Zap, ShieldCheck, AlertCircle, Lightbulb } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, AlertTriangle, Lightbulb, CheckCircle2, TrendingUp } from 'lucide-react';
 
 export default function AIInsights({ insights }) {
-  const getIcon = (type) => {
-    switch (type) {
-      case 'warning':
-        return <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />;
-      case 'action':
-        return <Zap className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />;
-      case 'positive':
-        return <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />;
-      default:
-        return <Lightbulb className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />;
-    }
-  };
-
   return (
-    <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden transition-all">
-      {/* Decorative background glow */}
-      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
+      {/* Glow effect */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-800/80">
+      <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-800">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-indigo-300 animate-pulse" />
+          <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center justify-center shadow-xs">
+            <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
           </div>
           <div>
             <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-              AI Financial Insights
+              AI Insights & Analysis
             </h2>
-            <p className="text-xs text-slate-400">Personalized recommendations for your budget</p>
+            <p className="text-xs text-slate-400">Calculated financial facts & AI recommendations</p>
           </div>
         </div>
-        <span className="text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800">
-          Engine v1.0
-        </span>
+        
+        <div className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 uppercase tracking-wider">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Facts vs Recommendations
+        </div>
       </div>
 
-      {/* Insights List */}
+      {/* Insights Cards */}
       <div className="space-y-3">
         {insights && insights.length > 0 ? (
-          insights.map((insight, idx) => (
-            <div
-              key={idx}
-              className="bg-slate-800/60 backdrop-blur border border-slate-700/60 p-3.5 rounded-xl flex items-start gap-3 hover:bg-slate-800/90 transition-all"
-            >
-              {getIcon(insight.type)}
-              <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                {insight.text}
-              </p>
-            </div>
-          ))
+          insights.map((insight, idx) => {
+            const isFact = insight.type === 'fact' || insight.type === 'info' || insight.type === 'warning';
+            const isRecommendation = insight.type === 'recommendation' || insight.type === 'action' || insight.type === 'tip';
+
+            return (
+              <div
+                key={insight.id || idx}
+                className="bg-slate-800/70 backdrop-blur border border-slate-700/60 p-4 rounded-xl space-y-2 hover:bg-slate-800/90 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-200 flex items-center gap-1.5">
+                    {isFact ? (
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                    ) : (
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    {insight.title || (isFact ? 'Calculated Fact' : 'AI Recommendation')}
+                  </span>
+
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider border ${
+                      isFact
+                        ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                    }`}
+                  >
+                    {isFact ? 'Calculated Fact' : 'AI Recommendation'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                  {insight.text}
+                </p>
+              </div>
+            );
+          })
         ) : (
-          <div className="text-xs text-slate-400 p-4 text-center">
-            Enter your monthly finances above to generate intelligent AI recommendations.
+          <div className="text-xs text-slate-400 p-6 text-center border border-dashed border-slate-700 rounded-xl">
+            No insights generated yet.
           </div>
         )}
       </div>
 
-      {/* Footer / Backend Notice */}
-      <div className="mt-5 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-        <span className="flex items-center gap-1 text-slate-400">
-          Ready for REST endpoint integration (<code className="text-indigo-300 font-mono">POST /api/insights</code>)
+      {/* Footer */}
+      <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span className="text-slate-400">
+          Powered by FastAPI REST API (<code className="text-indigo-300">GET /api/analysis</code>)
         </span>
-        <span className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold cursor-pointer">
-          Refresh <ArrowRight className="w-3 h-3" />
+        <span className="text-indigo-400 font-semibold flex items-center gap-1">
+          Auto-updated <ArrowRight className="w-3 h-3" />
         </span>
       </div>
     </div>
