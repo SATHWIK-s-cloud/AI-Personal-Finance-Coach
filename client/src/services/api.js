@@ -1,7 +1,7 @@
 /**
  * Full-Stack API Service Layer for AI Personal Finance Coach
- * Connects directly to FastAPI backend (http://localhost:8000/api)
- * with robust offline mock fallback for 100% demo availability.
+ * Connects directly to Express + Supabase PostgreSQL backend (http://localhost:8000/api)
+ * with robust demo fallback data for 100% hackathon presentation readiness.
  */
 
 const API_BASE_URL = 'http://localhost:8000/api';
@@ -18,15 +18,50 @@ async function safeFetch(url, options = {}) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.warn(`[API] Server request failed for ${url} (${err.message}). Using fallback handler.`);
+    console.warn(`[API] Server request failed for ${url} (${err.message}). Using resilient demo fallback.`);
     return null;
   }
 }
 
+// ----------------- DEMO FALLBACK DATA -----------------
+export const DEFAULT_DEMO_EXPENSES = [
+  // September 2026
+  { id: 'exp-1', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-09-01', is_recurring: true },
+  { id: 'exp-2', description: 'Groceries & Vegetables', amount: 5000, category: 'Food', date: '2026-09-03', is_recurring: false },
+  { id: 'exp-3', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-09-02', is_recurring: true },
+  { id: 'exp-4', description: 'Amazon Clothing & Gadgets', amount: 5000, category: 'Shopping', date: '2026-09-05', is_recurring: false },
+  { id: 'exp-5', description: 'Movie & Dining Out', amount: 2000, category: 'Entertainment', date: '2026-09-08', is_recurring: false },
+  { id: 'exp-6', description: 'Electricity & Water Bill', amount: 3000, category: 'Bills', date: '2026-09-04', is_recurring: true },
+  { id: 'exp-7', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-09-01', is_recurring: true },
+  { id: 'exp-8', description: 'Mobile Prepaid Recharge', amount: 1500, category: 'Bills', date: '2026-09-06', is_recurring: true },
+
+  // August 2026
+  { id: 'exp-9', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-08-01', is_recurring: true },
+  { id: 'exp-10', description: 'Supermarket Groceries', amount: 4500, category: 'Food', date: '2026-08-04', is_recurring: false },
+  { id: 'exp-11', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-08-02', is_recurring: true },
+  { id: 'exp-12', description: 'Electricity & Water Bill', amount: 2800, category: 'Bills', date: '2026-08-05', is_recurring: true },
+  { id: 'exp-13', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-08-01', is_recurring: true },
+  { id: 'exp-14', description: 'Restaurant Weekend Dinner', amount: 2200, category: 'Food', date: '2026-08-14', is_recurring: false },
+
+  // July 2026
+  { id: 'exp-15', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-07-01', is_recurring: true },
+  { id: 'exp-16', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-07-02', is_recurring: true },
+  { id: 'exp-17', description: 'Electricity & Water Bill', amount: 2500, category: 'Bills', date: '2026-07-04', is_recurring: true },
+  { id: 'exp-18', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-07-01', is_recurring: true },
+
+  // October 2026
+  { id: 'exp-19', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-10-01', is_recurring: true },
+  { id: 'exp-20', description: 'Festive Shopping & Electronics', amount: 8200, category: 'Shopping', date: '2026-10-05', is_recurring: false },
+  { id: 'exp-21', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-10-02', is_recurring: true },
+  { id: 'exp-22', description: 'Electricity & Water Bill', amount: 3200, category: 'Bills', date: '2026-10-04', is_recurring: true },
+  { id: 'exp-23', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-10-01', is_recurring: true },
+  { id: 'exp-24', description: 'Organic Grocery Store', amount: 6300, category: 'Food', date: '2026-10-08', is_recurring: false },
+];
+
 // ----------------- INCOME API -----------------
 export const apiGetIncome = async () => {
   const data = await safeFetch(`${API_BASE_URL}/income`);
-  return data ? data.income : 40000;
+  return data && typeof data.income === 'number' ? data.income : 40000;
 };
 
 export const apiSetIncome = async (amount) => {
@@ -34,48 +69,16 @@ export const apiSetIncome = async (amount) => {
     method: 'POST',
     body: JSON.stringify({ amount: Number(amount) }),
   });
-  return data ? data.income : amount;
+  return data && typeof data.income === 'number' ? data.income : Number(amount);
 };
 
 // ----------------- EXPENSE API -----------------
 export const apiGetExpenses = async () => {
   const data = await safeFetch(`${API_BASE_URL}/expenses`);
-  if (data && data.expenses) return data.expenses;
-  
-  // Default demo transaction items fallback
-  return [
-    // September 2026
-    { id: 'exp-1', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-09-01', is_recurring: true },
-    { id: 'exp-2', description: 'Groceries & Vegetables', amount: 5000, category: 'Food', date: '2026-09-03', is_recurring: false },
-    { id: 'exp-3', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-09-02', is_recurring: true },
-    { id: 'exp-4', description: 'Amazon Clothing & Gadgets', amount: 5000, category: 'Shopping', date: '2026-09-05', is_recurring: false },
-    { id: 'exp-5', description: 'Movie & Dining Out', amount: 2000, category: 'Entertainment', date: '2026-09-08', is_recurring: false },
-    { id: 'exp-6', description: 'Electricity & Water Bill', amount: 3000, category: 'Bills', date: '2026-09-04', is_recurring: true },
-    { id: 'exp-7', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-09-01', is_recurring: true },
-    { id: 'exp-8', description: 'Mobile Prepaid Recharge', amount: 1500, category: 'Bills', date: '2026-09-06', is_recurring: true },
-
-    // August 2026
-    { id: 'exp-9', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-08-01', is_recurring: true },
-    { id: 'exp-10', description: 'Supermarket Groceries', amount: 4500, category: 'Food', date: '2026-08-04', is_recurring: false },
-    { id: 'exp-11', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-08-02', is_recurring: true },
-    { id: 'exp-12', description: 'Electricity & Water Bill', amount: 2800, category: 'Bills', date: '2026-08-05', is_recurring: true },
-    { id: 'exp-13', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-08-01', is_recurring: true },
-    { id: 'exp-14', description: 'Restaurant Weekend Dinner', amount: 2200, category: 'Food', date: '2026-08-14', is_recurring: false },
-
-    // July 2026
-    { id: 'exp-15', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-07-01', is_recurring: true },
-    { id: 'exp-16', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-07-02', is_recurring: true },
-    { id: 'exp-17', description: 'Electricity & Water Bill', amount: 2500, category: 'Bills', date: '2026-07-04', is_recurring: true },
-    { id: 'exp-18', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-07-01', is_recurring: true },
-
-    // October 2026
-    { id: 'exp-19', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-10-01', is_recurring: true },
-    { id: 'exp-20', description: 'Festive Shopping & Electronics', amount: 8200, category: 'Shopping', date: '2026-10-05', is_recurring: false },
-    { id: 'exp-21', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-10-02', is_recurring: true },
-    { id: 'exp-22', description: 'Electricity & Water Bill', amount: 3200, category: 'Bills', date: '2026-10-04', is_recurring: true },
-    { id: 'exp-23', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-10-01', is_recurring: true },
-    { id: 'exp-24', description: 'Organic Grocery Store', amount: 6300, category: 'Food', date: '2026-10-08', is_recurring: false },
-  ];
+  if (data && Array.isArray(data.expenses) && data.expenses.length > 0) {
+    return data.expenses;
+  }
+  return DEFAULT_DEMO_EXPENSES;
 };
 
 export const apiAddExpense = async (expenseData) => {
@@ -84,7 +87,7 @@ export const apiAddExpense = async (expenseData) => {
     body: JSON.stringify(expenseData),
   });
   if (data && data.expense) return data.expense;
-  
+
   return {
     ...expenseData,
     id: `exp-${Date.now()}`,
@@ -105,7 +108,7 @@ export const apiDeleteExpense = async (id) => {
   const data = await safeFetch(`${API_BASE_URL}/expenses/${id}`, {
     method: 'DELETE',
   });
-  return data ? true : true;
+  return true;
 };
 
 // ----------------- AUTO CATEGORIZATION API -----------------
@@ -116,7 +119,7 @@ export const apiCategorize = async (description) => {
   });
   if (data) return data;
 
-  // Simple local fallback rule engine
+  // Local fallback rule engine
   const text = (description || '').toLowerCase();
   let cat = 'Other';
   let is_rec = false;
@@ -142,29 +145,22 @@ export const apiGetBudget = async () => {
 
   return {
     total_budget: 32000,
-    total_spent: 30000,
-    remaining_budget: 2000,
-    overall_usage_percentage: 93.8,
-    category_details: [
-      { category: 'Rent', limit: 10000, spent: 10000, remaining: 0, percentage_used: 100, status: 'exceeded' },
-      { category: 'Food', limit: 6000, spent: 5000, remaining: 1000, percentage_used: 83.3, status: 'warning_medium' },
-      { category: 'Transport', limit: 3500, spent: 3000, remaining: 500, percentage_used: 85.7, status: 'warning_medium' },
-      { category: 'Shopping', limit: 4000, spent: 5000, remaining: -1000, percentage_used: 125, status: 'exceeded' },
-      { category: 'Entertainment', limit: 2500, spent: 2500, remaining: 0, percentage_used: 100, status: 'exceeded' },
-      { category: 'Bills', limit: 4000, spent: 4500, remaining: -500, percentage_used: 112.5, status: 'exceeded' },
-      { category: 'Other', limit: 2000, spent: 0, remaining: 2000, percentage_used: 0, status: 'normal' },
-    ],
-    alerts: [
-      'Exceeded Shopping budget! Spent ₹5,000 of ₹4,000 (125% used).',
-      'Food spending has reached 83% of allocated limit.',
-    ],
+    categories: {
+      Rent: 10000,
+      Food: 6000,
+      Transport: 3500,
+      Shopping: 4000,
+      Entertainment: 2500,
+      Bills: 4000,
+      Other: 2000,
+    },
   };
 };
 
 export const apiSetBudget = async (total_budget, category_limits) => {
   const data = await safeFetch(`${API_BASE_URL}/budget`, {
     method: 'POST',
-    body: JSON.stringify({ total_budget, categories: category_limits }),
+    body: JSON.stringify({ total_budget: Number(total_budget), categories: category_limits }),
   });
   return data ? data.budget : null;
 };
@@ -189,7 +185,7 @@ export const apiSetSavingsGoal = async (goalData) => {
     method: 'POST',
     body: JSON.stringify(goalData),
   });
-  return data ? data.savings_goal : goalData;
+  return data ? (data.savings_goal || goalData) : goalData;
 };
 
 // ----------------- FINANCIAL HEALTH API -----------------
@@ -203,12 +199,33 @@ export const apiGetFinancialHealth = async () => {
     explanation: 'Solid financial balance. Slight optimization in discretionary spending can boost your savings.',
     breakdown: {
       savings_rate_score: 30,
-      "budget_compliance_score": 22,
+      budget_compliance_score: 22,
       discretionary_control_score: 15,
       emergency_fund_score: 5,
     },
     is_educational_only: true,
   };
+};
+
+// ----------------- ANALYSIS APIS -----------------
+export const apiGetAnalysis = async () => {
+  const data = await safeFetch(`${API_BASE_URL}/analysis`);
+  return data;
+};
+
+export const apiGetRecurringExpenses = async () => {
+  const data = await safeFetch(`${API_BASE_URL}/analysis/recurring`);
+  return data;
+};
+
+export const apiGetSpendingPatterns = async () => {
+  const data = await safeFetch(`${API_BASE_URL}/analysis/patterns`);
+  return data;
+};
+
+export const apiGetMonthlyComparison = async () => {
+  const data = await safeFetch(`${API_BASE_URL}/analysis/monthly-comparison`);
+  return data;
 };
 
 // ----------------- WHAT-IF API -----------------
@@ -228,7 +245,6 @@ export const apiSendChatMessage = async (userMessage, history = []) => {
   });
   if (data && data.reply) return data.reply;
 
-  // Fallback assistant reply
   const q = userMessage.toLowerCase();
   if (q.includes('save') || q.includes('10,000') || q.includes('10000')) {
     return "To save ₹10,000 monthly, consider capping Shopping and Entertainment to ₹3,000 total. You currently spend ₹7,000 on these combined!";

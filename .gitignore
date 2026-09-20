@@ -1,1 +1,25 @@
+# Node dependencies & build output
 node_modules/
+client/node_modules/
+dist/
+client/dist/
+
+# Python cache & virtual environment
+__pycache__/
+server/__pycache__/
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+env/
+
+# Environment configuration & secret keys
+.env
+server/.env
+.env.local
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

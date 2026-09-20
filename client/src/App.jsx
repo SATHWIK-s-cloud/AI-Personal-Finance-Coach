@@ -18,7 +18,7 @@ import {
   apiGetExpenses, apiAddExpense, apiUpdateExpense, apiDeleteExpense,
   apiGetBudget, apiSetBudget,
   apiGetSavingsGoal, apiSetSavingsGoal,
-  apiGetFinancialHealth, apiResetDemo
+  apiResetDemo, DEFAULT_DEMO_EXPENSES
 } from './services/api';
 
 import { calculateSummary, calculateHealthScore, generateAIInsights } from './utils/financialCalculators';
@@ -43,59 +43,30 @@ export default function App() {
     setUser(null);
   };
 
-  // Core Application Data State
-  const [income, setIncome] = useState(40000);
-  const [expensesList, setExpensesList] = useState([
-    // September 2026
-    { id: 'exp-1', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-09-01', is_recurring: true },
-    { id: 'exp-2', description: 'Groceries & Vegetables', amount: 5000, category: 'Food', date: '2026-09-03', is_recurring: false },
-    { id: 'exp-3', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-09-02', is_recurring: true },
-    { id: 'exp-4', description: 'Amazon Clothing & Gadgets', amount: 5000, category: 'Shopping', date: '2026-09-05', is_recurring: false },
-    { id: 'exp-5', description: 'Movie & Dining Out', amount: 2000, category: 'Entertainment', date: '2026-09-08', is_recurring: false },
-    { id: 'exp-6', description: 'Electricity & Water Bill', amount: 3000, category: 'Bills', date: '2026-09-04', is_recurring: true },
-    { id: 'exp-7', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-09-01', is_recurring: true },
-    { id: 'exp-8', description: 'Mobile Prepaid Recharge', amount: 1500, category: 'Bills', date: '2026-09-06', is_recurring: true },
-
-    // August 2026
-    { id: 'exp-9', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-08-01', is_recurring: true },
-    { id: 'exp-10', description: 'Supermarket Groceries', amount: 4500, category: 'Food', date: '2026-08-04', is_recurring: false },
-    { id: 'exp-11', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-08-02', is_recurring: true },
-    { id: 'exp-12', description: 'Electricity & Water Bill', amount: 2800, category: 'Bills', date: '2026-08-05', is_recurring: true },
-    { id: 'exp-13', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-08-01', is_recurring: true },
-
-    // July 2026
-    { id: 'exp-15', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-07-01', is_recurring: true },
-    { id: 'exp-16', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-07-02', is_recurring: true },
-    { id: 'exp-17', description: 'Electricity & Water Bill', amount: 2500, category: 'Bills', date: '2026-07-04', is_recurring: true },
-
-    // October 2026
-    { id: 'exp-19', description: 'Apartment Rent', amount: 10000, category: 'Rent', date: '2026-10-01', is_recurring: true },
-    { id: 'exp-20', description: 'Festive Shopping & Electronics', amount: 8200, category: 'Shopping', date: '2026-10-05', is_recurring: false },
-    { id: 'exp-21', description: 'Monthly Metro Pass', amount: 3000, category: 'Transport', date: '2026-10-02', is_recurring: true },
-    { id: 'exp-22', description: 'Electricity & Water Bill', amount: 3200, category: 'Bills', date: '2026-10-04', is_recurring: true },
-    { id: 'exp-23', description: 'Netflix Subscription', amount: 500, category: 'Entertainment', date: '2026-10-01', is_recurring: true },
-  ]);
+  // Core Application Data State - Pre-populated with rich hackathon demo data
+  const [income, setIncome] = useState(0);
+  const [expensesList, setExpensesList] = useState(DEFAULT_DEMO_EXPENSES);
 
   const [budgetData, setBudgetData] = useState({
-    total_budget: 32000,
+    total_budget: 0,
     categories: {
-      Rent: 10000,
-      Food: 6000,
-      Transport: 3500,
-      Shopping: 4000,
-      Entertainment: 2500,
-      Bills: 4000,
-      Other: 2000,
+      rent: 0,
+      food: 0,
+      transport: 0,
+      shopping: 0,
+      entertainment: 0,
+      bills: 0,
+      other: 0,
     },
   });
 
   const [savingsGoal, setSavingsGoal] = useState({
-    target_amount: 50000,
+    target_amount: 0,
     target_date: '2027-03-31',
-    current_savings: 15000,
+    current_savings: 0,
   });
 
-  // Load state from REST backend on mount
+  // Load state from REST backend on mount (merging live database records if present)
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
@@ -106,17 +77,21 @@ export default function App() {
         apiGetSavingsGoal(),
       ]);
 
-      if (inc !== null) setIncome(inc);
-      if (exps && Array.isArray(exps)) setExpensesList(exps);
+      if (inc !== null && typeof inc === 'number') setIncome(inc);
+      if (exps && Array.isArray(exps) && exps.length > 0) {
+        setExpensesList(exps);
+      }
       if (bud && bud.category_details) {
         const catMap = {};
         bud.category_details.forEach(c => { catMap[c.category] = c.limit; });
         setBudgetData({ total_budget: bud.total_budget, categories: catMap });
+      } else if (bud && bud.categories) {
+        setBudgetData({ total_budget: bud.total_budget || 32000, categories: bud.categories });
       }
-      if (goal) setSavingsGoal(goal);
+      if (goal && goal.target_amount) setSavingsGoal(goal);
     } catch (err) {
-      console.warn('Failed to load REST data:', err);
-    } finally {
+      console.warn('[App] Rest data sync notice:', err.message);
+    } fontally: {
       setIsLoading(false);
     }
   };
@@ -129,7 +104,8 @@ export default function App() {
   const categoryTotals = useMemo(() => {
     const totals = { Rent: 0, Food: 0, Transport: 0, Shopping: 0, Entertainment: 0, Bills: 0, Other: 0 };
     expensesList.forEach((exp) => {
-      const cat = exp.category || 'Other';
+      const rawCat = (exp.category || 'Other').trim();
+      const cat = rawCat.charAt(0).toUpperCase() + rawCat.slice(1).toLowerCase();
       if (totals[cat] !== undefined) {
         totals[cat] += Number(exp.amount) || 0;
       } else {
@@ -166,7 +142,7 @@ export default function App() {
     return generateAIInsights(income, categoryTotals);
   }, [income, categoryTotals]);
 
-  // Handlers for Member 1 & REST sync
+  // Handlers for REST sync
   const handleIncomeChange = async (newVal) => {
     const num = newVal === '' ? 0 : Number(newVal);
     setIncome(num);
@@ -176,8 +152,7 @@ export default function App() {
   const handleExpenseCategoryChange = (key, val) => {
     const catName = key.charAt(0).toUpperCase() + key.slice(1);
     const num = val === '' ? 0 : Number(val);
-    
-    // Update or create single item for this category in expensesList
+
     setExpensesList((prev) => {
       const existingIdx = prev.findIndex((e) => e.category.toLowerCase() === key.toLowerCase());
       if (existingIdx >= 0) {
@@ -215,7 +190,7 @@ export default function App() {
     setExpensesList((prev) => prev.filter((e) => e.id !== id));
   };
 
-  // Handlers for Member 3 (Budget & Goal)
+  // Handlers for Budget & Savings Goal
   const handleSaveBudget = async (total, limits) => {
     setBudgetData({ total_budget: total, categories: limits });
     await apiSetBudget(total, limits);
@@ -241,7 +216,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white text-slate-900">
-      
+
       {/* App Header & Navigation */}
       <Header
         activeTab={activeTab}
@@ -254,7 +229,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
+
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
           <div className="relative z-10 max-w-3xl">
@@ -284,7 +259,7 @@ export default function App() {
         {/* TAB 1: MAIN DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            
+
             {/* Quick Edit Finances & Health Score Ring */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <section className="lg:col-span-7">
@@ -293,7 +268,7 @@ export default function App() {
                   expenses={categoryTotals}
                   onIncomeChange={handleIncomeChange}
                   onExpenseChange={handleExpenseCategoryChange}
-                  onAnalyze={() => {}}
+                  onAnalyze={() => { }}
                 />
               </section>
 
@@ -337,7 +312,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: TRANSACTIONS (MEMBER 1 & MEMBER 2) */}
+        {/* TAB 2: TRANSACTIONS */}
         {activeTab === 'transactions' && (
           <TransactionHistory
             income={income}
@@ -349,7 +324,7 @@ export default function App() {
           />
         )}
 
-        {/* TAB 3: BUDGET & SAVINGS (MEMBER 3) */}
+        {/* TAB 3: BUDGET & SAVINGS */}
         {activeTab === 'budget' && (
           <BudgetAndSavings
             income={income}
@@ -387,10 +362,10 @@ export default function App() {
       <footer className="bg-white border-t border-slate-200 py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 space-y-1">
           <p className="font-semibold text-slate-700">
-            AI Personal Finance Coach — Full-Stack Hackathon Project
+            AI Personal Finance Coach — Full-Stack Integration
           </p>
           <p>
-            React + Vite + Tailwind CSS + Recharts + FastAPI REST API + MongoDB Resilient Core
+            React + Vite + Node.js + Express + Supabase PostgreSQL
           </p>
         </div>
       </footer>
